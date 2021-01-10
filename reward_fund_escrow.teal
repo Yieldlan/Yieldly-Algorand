@@ -1,0 +1,27 @@
+#pragma version 2
+global GroupSize
+int 2
+==
+
+gtxn 0 TypeEnum
+int 6
+==
+&&
+
+gtxn 0 OnCompletion
+int NoOp
+==
+int DeleteApplication
+gtxn 0 OnCompletion
+==
+||
+&&
+
+gtxn 1 RekeyTo
+global ZeroAddress
+==
+&&
+gtxn 0 RekeyTo
+global ZeroAddress
+==
+&&

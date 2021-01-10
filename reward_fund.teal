@@ -1,0 +1,283 @@
+#pragma version 2
+// Amount - total
+// Escrow Address
+// Creator Address
+
+int 0
+txn ApplicationID
+==
+bz not_creation
+byte "Creator"
+txn Sender
+app_global_put
+
+
+txn NumAppArgs
+int 2
+==
+bz failed
+byte "Receiver"
+txna ApplicationArgs 3
+app_global_put
+byte "Total"
+int 0
+app_global_put
+int 1
+return
+
+
+//**********************************************************
+not_creation:
+int DeleteApplication
+txn OnCompletion
+==
+bz not_deletion
+
+byte "Creator"
+app_global_get
+txn Sender
+==
+bz failed
+
+int 0
+int 1
+balance
+==
+bnz finished
+
+global GroupSize
+int 2
+==
+
+gtxn 1 TypeEnum
+int 1
+==
+&&
+
+byte "Receiver"
+app_global_get
+gtxn 1 CloseRemainderTo
+==
+&&
+
+gtxn 1 Amount
+int 0
+==
+&&
+
+byte "Escrow"
+app_global_get
+gtxn 1 Sender
+==
+&&
+bz failed
+
+int 1
+return
+//**********************************************************
+
+
+//**********************************************************
+not_deletion:
+int UpdateApplication
+txn OnCompletion
+==
+bz not_update
+
+byte "Creator"
+app_global_get
+txn Sender
+==
+
+txn NumAppArgs
+int 1
+==
+&&
+bz failed
+
+byte "Escrow"
+txna ApplicationArgs 0
+app_global_put
+int 1
+return
+//**********************************************************
+
+
+//**********************************************************
+not_update:
+int CloseOut
+txn OnCompletion
+==
+bnz finished
+
+int 0
+txn NumAppArgs
+==
+bz check_parms 
+
+int OptIn
+txn OnCompletion
+==
+bz failed
+int 1
+return
+//**********************************************************
+
+
+//**********************************************************
+check_parms:
+txna ApplicationArgs 0
+byte "stake"
+==
+bnz stake
+txna ApplicationArgs 0
+byte "reclaim" 
+==
+bnz reclaim
+txna ApplicationArgs 0
+byte "claimDifference" 
+==
+bnz claimDifference
+//**********************************************************
+
+//**********************************************************
+stake:
+global GroupSize
+int 2
+==
+
+gtxn 1 TypeEnum
+int 1
+==
+&&
+bz failed
+
+byte "Escrow"
+app_global_get
+gtxn 1 Receiver
+==
+bz failed
+
+byte "Total"
+app_global_get
+gtxn 1 Amount
++
+store 1
+byte "Total"
+load 1
+app_global_put
+
+int 0 //sender
+txn ApplicationID
+byte "MyAmountGiven"
+app_local_get_ex
+
+bz new_giver
+gtxn 1 Amount
++
+store 3
+int 0 //sender
+byte "MyAmountGiven"
+load 3
+app_local_put
+b finished
+//**********************************************************
+
+
+//**********************************************************
+new_giver:
+int 0 //sender
+byte "MyAmountGiven"
+gtxn 1 Amount
+app_local_put
+b finished
+//**********************************************************
+
+
+//**********************************************************
+claimDifference:
+global GroupSize
+int 2
+==
+bz failed
+
+gtxn 1 Receiver
+byte "Creator"
+app_global_get
+==
+
+gtxn 1 Amount
+byte "Total"
+app_global_get
++
+byte "Total"
+app_global_get
+>
+&&
+bz failed
+
+b finished
+//**********************************************************
+
+
+//**********************************************************
+reclaim:
+global GroupSize
+int 2
+==
+bz failed
+
+gtxn 1 Receiver
+gtxn 0 Sender
+==
+
+gtxn 1 Sender
+byte "Escrow"
+app_global_get
+==
+&&
+
+gtxn 1 Amount
+gtxn 1 Fee
++
+int 0
+byte "MyAmountGiven"
+app_local_get
+<=
+&&
+bz failed
+
+gtxn 1 Fee
+gtxn 1 Amount
++
+int 1
+balance
+==
+
+gtxn 1 CloseRemainderTo 
+global ZeroAddress
+==
+||
+bz failed
+
+int 0
+byte "MyAmountGiven"
+app_local_get
+gtxn 1 Amount
+-
+gtxn 1 Fee
+-
+store 5
+int 0
+byte "MyAmountGiven"
+load 5
+app_local_put
+b finished
+//**********************************************************
+
+failed:
+int 0
+return
+finished:
+int 1
+return
